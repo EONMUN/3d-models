@@ -1,100 +1,92 @@
-# Keystone Hardware - AI Agent Context
+# 3D Pattern Stamps - AI Agent Context
 
 ## Project Overview
-Keystone Hardware is a modular, expandable computer case. The project is currently **migrating from legacy OpenSCAD (`modules/*.scad`) to Python-generated OpenSCAD (`src/`)** using the `anchorscad` library.
+This project generates 3D pattern stamps for use in art creation. Pattern stamps feature repeating geometric or decorative patterns that can be pressed into clay, paint, or other media.
 
 **Key Documentation:**
-- `SPEC.md`: Full design specification, dimensions, and requirements.
-- `CLAUDE.md`: Guidance for the legacy OpenSCAD workflow and detailed architectural notes for the existing codebase.
-- `TASKS.md`: Component tracking and development phases.
+- `SPEC.md`: Technical specifications for stamp dimensions, materials, and design principles.
+- `README.md`: User-facing documentation with setup and usage instructions.
 
 ## Architecture
 
-### Python/AnchorSCAD (Active Development)
-This is the active development area for new features and migration.
+### Python/AnchorSCAD Workflow
+All stamp models are generated via Python code using the `anchorscad` library.
+
 - **Source:** `src/` (Root package directory).
 - **Library:** Uses `anchorscad` for geometry generation.
-- **Registry:** Parts are registered using `@registry.register_part("name")` (defined in `src/registry.py`).
-- **Configuration:** `src/config.py` uses `@anchorscad.datatree` to define parametric dimensions (`CommonDimensions`, `PicoDimensions`, etc.).
-- **Organization:**
-  - `src/lib/`: **Vitamins** (Off-the-shelf parts). Things you buy (Motherboards, PSUs, Heatsinks). These define the fixed interfaces.
-  - `src/parts/`: **Fabricated Parts** (3D printed/machined). Things you make (Shells, Frames, Brackets). These derive dimensions from `config.py`.
-  - `src/assemblies/`: **System Builds**. Top-level compositions of Parts + Vitamins (e.g., `PicoAssembly`).
-- **Build System:** `bin/render`
-  - **Discovery:** Recursively imports `lib`, `parts`, and `assemblies` packages to trigger registration.
-  - **Output:** Generates `.scad` and `.stl` files in `build/`.
-  - **Usage:**
-    - `bin/render`: Build all registered parts.
-    - `bin/render [filter]`: Build parts matching the filter string.
-    - `bin/render --list`: List all registered parts.
-    - `bin/render --scad-only`: Skip STL generation (faster).
-    - `bin/watch`: Watch for changes in `src/`, run tests, then build.
+- **Registry:** Stamps are registered using `@registry.register_stamp("name")` (defined in `src/registry.py`).
 
-### Legacy OpenSCAD (Reference)
-- **Source:** `modules/` and `assemblies/`.
-- **Status:** Reference only. **Do not import these files.** Recreate geometry in pure Python.
-- **Context:** See `CLAUDE.md` for detailed structure of this legacy code.
+### Directory Structure
+```
+src/
+├── registry.py          # Stamp registration system
+├── config.py            # Global stamp configuration (dimensions, defaults)
+├── stamps/              # Stamp pattern definitions
+│   └── __init__.py
+└── utils/               # Utility functions (grids, borders, etc.)
+    └── __init__.py
+```
+
+### Build System
+- **Output:** Generates `.scad` and `.stl` files in `build/`.
+- **Usage:**
+  - `bin/render`: Build all registered stamps.
+  - `bin/render [filter]`: Build stamps matching the filter string.
+  - `bin/render --list`: List all registered stamps.
+  - `bin/render --scad-only`: Skip STL generation (faster).
+
+### Archive
+The `archive/src/` directory contains the original Python code from the previous project (Keystone Hardware modular computer case) for reference.
 
 ## Development Workflow
 
-1.  **Create/Edit Part:**
-    - Define a class decorated with `@ad.shape`.
-    - Use `@ad.anchor` to define connection points.
-    - Register the part with `@registry.register_part("part_name")`.
+1. **Create a Stamp:**
+   - Define a class decorated with `@ad.shape` in `src/stamps/`.
+   - Use `@ad.anchor` to define connection points.
+   - Register the stamp with `@registry.register_stamp("stamp_name")`.
 
-2.  **Verify/Render:**
-    - Run `bin/watch` to automatically test and render on file save.
-    - Run `bin/render [part_name]` to manually generate SCAD/STL.
-    - **Visual Verification:** Run `bin/screenshots --scan-dir build/` to generate screenshots of the built parts in `screenshots/`. Verify these images to ensure the geometry is correct.
+2. **Verify/Render:**
+   - Run `bin/render [stamp_name]` to generate SCAD/STL.
+   - Import the `.scad` file into OpenSCAD to preview.
 
-3.  **Testing (Strict Requirement):**
-    - **Methodology:** Utilize the existing test infrastructure (`pytest` via `bin/test`) to verify geometry and logic. **Do not create one-off debugging scripts.** This ensures reproducible verification and prevents regression.
-    - **Recommended Workflow:**
-        1. **Isolate:** Create a focused unit test (e.g., in `tests/`) that asserts the specific geometric condition (e.g., "Part A top must equal Part B bottom").
-        2. **Verify Failure:** Run the test with `bin/test <test_file>` to confirm it fails (demonstrating the bug).
-        3. **Fix:** Modify the source code.
-        4. **Verify Success:** Run the test again to confirm it passes.
-    - `tests/hardware_components_dimensions_test.py` verifies core dimensions.
+3. **Testing:**
+   - Write unit tests in `tests/` to verify geometric dimensions.
+   - Run tests with `bin/test`.
 
-4.  **Committing:**
-    - Always use **Semantic Commit Messages** with a clear subject line.
-    - Format: `<type>(<scope>): <subject>`
-    - Example: `feat(mobo): add ATX connector to MiniITX motherboard`
-    - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+4. **Committing:**
+   - Use **Semantic Commit Messages** with a clear subject line.
+   - Format: `<type>(<scope>): <subject>`
+   - Example: `feat(stamps): add honeycomb pattern stamp`
+   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
 
-## AnchorSCAD Patterns & Gotchas
+## Pattern Design Guidelines
 
-- **Composites:** `ad.CompositeMaker` does not exist. Use the "first component as root" pattern:
-  ```python
-  maker = first_shape.solid().at(...)
-  maker.add_at(second_shape.solid().at(...))
-  return maker
-  ```
-- **Boolean Operations:** `Maker` objects do NOT support `-` operator. Use `HoleMode`:
+### Stamp Components
+1. **Base:** Flat surface with the pattern relief cut into it.
+2. **Pattern:** Raised or recessed design that transfers to the medium.
+3. **Handle:** Ergonomic grip for pressing the stamp.
+
+### Design Principles
+- Pattern elements should have adequate spacing for clean impressions.
+- Relief depth should be consistent (default 3mm).
+- Edges should be slightly chamfered to prevent medium buildup.
+- Handle should be centered for even pressure distribution.
+
+## AnchorSCAD Patterns
+
+- **Boolean Operations:** Use `HoleMode` for subtractions:
   ```python
   body = shape.solid().at(...)
   hole = other_shape.hole().at(...)
   body.add_at(hole) # Subtraction
   ```
-- **Coloring:** Apply `.colour()` to the `SolidMode` **before** `.at()`:
+- **Coloring:** Apply `.colour()` to `SolidMode` **before** `.at()`:
   ```python
-  # CORRECT:
   shape.solid("name").colour("red").at("centre")
-  # INCORRECT:
-  shape.solid("name").at("centre").colour("red") # AttributeError
   ```
 - **Matrices:** Use `ad.IDENTITY` (constant), not `ad.identity()`.
-- **Dataclasses:** Import `field` from `dataclasses`, not `anchorscad.datatree`.
-- **Headless Rendering:** `ad.render` may fail with internal errors (`AttributeError: 'str' object has no attribute 'A'`) in the headless test environment. Avoid full geometry intersection tests; rely on logic/dimension tests.
 
 ## Dependencies
-- **Python:** `anchorscad`, `numpy`, `watchdog`, `pytest`.
+- **Python:** `anchorscad`, `numpy`, `pytest`.
 - **System:** `openscad` CLI required for STL generation.
-- **Environment:** Managed via `uv`.
-- **Imports:** Source root is `src/`. Imports should be absolute (e.g., `from lib.motherboard import ...`).
-
-## Key Files
-- `src/registry.py`: Registry logic.
-- `src/config.py`: Global configuration and dimensions.
-- `bin/render`: Main build script (mocks OpenGL).
-- `bin/watch`: Watcher hook (runs tests before build).
+- **Environment:** Managed via Nix flake.

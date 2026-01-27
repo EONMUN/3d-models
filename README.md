@@ -1,90 +1,112 @@
-# Keystone Hardware
+# 3D Pattern Stamps
 
-A modular, expandable computer case designed in OpenSCAD. The case supports multiple configurations from ultra-compact to full GPU builds.
+Generate 3D-printable pattern stamps for art creation. Pattern stamps feature repeating geometric or decorative designs that can be pressed into clay, paint, plaster, or other media.
 
-![Minimal Configuration - Exploded View](https://r2.ks.systems/openscad-screenshots/assembly-minimal-exploded.png)
+## Features
 
-## Configurations
-
-| Configuration | Description | Dimensions |
-|--------------|-------------|------------|
-| **Pico** | Ultra-compact with Pico ATX PSU and NH-L9 cooler | 176 x 176 x ~63mm |
-| **Minimal** | Mini-ITX + Flex ATX PSU (horizontal) | ~226 x 173 x 100mm |
-| **NAS 2-disk** | Base + 2 HDDs with passive chimney airflow | 226 x 173 x ~150mm |
-| **NAS many-disk** | Base + 5-8 HDDs with active fan cooling | 226 x 173 x ~200mm |
-| **GPU** | Vertical orientation with full-size GPU, SFX PSU | 171 x 378 x 190mm |
-| **GPU AIO** | GPU config with 240mm AIO liquid cooling | 171 x 378 x 190mm |
-
-## Gallery
-
-<table>
-<tr>
-<td><strong>Pico</strong></td>
-<td><strong>Minimal</strong></td>
-<td><strong>NAS 2-disk</strong></td>
-</tr>
-<tr>
-<td><img src="https://r2.ks.systems/openscad-screenshots/assembly-pico-exploded.png" width="250"/></td>
-<td><img src="https://r2.ks.systems/openscad-screenshots/assembly-minimal-exploded.png" width="250"/></td>
-<td><img src="https://r2.ks.systems/openscad-screenshots/assembly-nas_2disk-exploded.png" width="250"/></td>
-</tr>
-<tr>
-<td><strong>NAS many-disk</strong></td>
-<td><strong>GPU</strong></td>
-<td><strong>GPU AIO</strong></td>
-</tr>
-<tr>
-<td><img src="https://r2.ks.systems/openscad-screenshots/assembly-nas_many-exploded.png" width="250"/></td>
-<td><img src="https://r2.ks.systems/openscad-screenshots/assembly-gpu-exploded.png" width="250"/></td>
-<td><img src="https://r2.ks.systems/openscad-screenshots/assembly-gpu_aio-exploded.png" width="250"/></td>
-</tr>
-</table>
+- Parametric stamp generation via Python/AnchorSCAD
+- Configurable dimensions for different stamp sizes
+- Variety of pattern styles (geometric, organic, decorative)
+- Ergonomic handle designs
+- Export to STL for 3D printing
 
 ## Requirements
 
-- [OpenSCAD](https://openscad.org/) (2021.01 or later recommended)
+- Python 3.10+
+- [OpenSCAD](https://openscad.org/) (for STL generation)
+- Nix (optional, for reproducible environment)
+
+## Installation
+
+### With Nix (Recommended)
+
+```bash
+# Enter the development environment
+nix develop
+```
+
+### Manual Setup
+
+```bash
+# Install Python dependencies
+pip install anchorscad numpy pytest
+```
 
 ## Usage
 
-Preview a configuration in OpenSCAD:
+### List Available Stamps
 
 ```bash
-openscad assemblies/minimal.scad
-openscad assemblies/pico.scad
-openscad assemblies/gpu.scad
+bin/render --list
 ```
 
-Render to STL for 3D printing:
+### Build All Stamps
 
 ```bash
-openscad -o output.stl assemblies/minimal.scad
+bin/render
+```
+
+### Build Specific Stamp
+
+```bash
+bin/render honeycomb
+```
+
+### Generate SCAD Only (Faster)
+
+```bash
+bin/render --scad-only
+```
+
+### Preview in OpenSCAD
+
+```bash
+openscad build/stamp_name.scad
 ```
 
 ## Project Structure
 
 ```
-assemblies/          # Complete case configurations
-modules/
-├── case/
-│   ├── dimensions.scad   # Shared dimensions
-│   ├── base/             # Core frame components
-│   ├── panels/           # Side, top, bottom panels
-│   ├── nas_2disk/        # 2-disk NAS enclosure
-│   └── nas_many/         # Many-disk NAS enclosure
-├── components/           # Hardware models
-│   ├── motherboard/      # Mini-ITX assemblies
-│   ├── power/            # PSU models (SFX, Flex ATX, Pico)
-│   ├── storage/          # HDDs, SSDs
-│   └── cooling/          # Fans, radiators, AIO
-└── util/                 # Helper modules
+src/
+├── registry.py          # Stamp registration system
+├── config.py            # Global configuration
+├── stamps/              # Stamp pattern definitions
+│   └── __init__.py
+└── utils/               # Utility functions
+    └── __init__.py
+build/                   # Generated SCAD and STL files
+archive/                 # Reference code from previous project
 ```
 
-## Design Features
+## Creating New Stamps
 
-- **Modular stacking**: NAS enclosures mount underneath base via 4x #6-32 corner holes
-- **Passive cooling**: Chimney airflow design for quiet NAS operation
-- **Integrated standoffs**: Bottom panel includes hexagonal recesses for motherboard mounting
-- **Dovetail joints**: Tool-free panel assembly
+1. Create a new file in `src/stamps/` (e.g., `my_pattern.py`)
+2. Define a stamp class using AnchorSCAD:
+
+```python
+import anchorscad as ad
+from registry import register_stamp
+from config import StampDimensions
+
+@ad.shape
+@register_stamp("my_pattern")
+class MyPatternStamp(ad.CompositeShape):
+    dims: StampDimensions = ad.dtfield(StampDimensions())
+
+    def build(self, maker):
+        # Build your stamp geometry here
+        pass
+```
+
+3. Run `bin/render my_pattern` to generate the files
+
+## Stamp Sizes
+
+| Size   | Base (mm)   | Pattern Area (mm) | Handle Height (mm) |
+|--------|-------------|-------------------|-------------------|
+| Small  | 30 x 30     | 20 x 20           | 20                |
+| Medium | 50 x 50     | 40 x 40           | 25                |
+| Large  | 100 x 100   | 84 x 84           | 35                |
 
 ## License
 

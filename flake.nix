@@ -6,10 +6,19 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
       in
       {
         devShells.default = pkgs.mkShell {
@@ -36,19 +45,22 @@
 
             # Development tools
             git
+            claude-code
           ];
 
           shellHook = ''
             # Set up library paths for Python native extensions
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
-              pkgs.stdenv.cc.cc.lib
-              pkgs.zlib
-              pkgs.libGL
-              pkgs.libGLU
-              pkgs.xorg.libX11
-              pkgs.xorg.libXext
-              pkgs.xorg.libXrender
-            ]}:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="${
+              pkgs.lib.makeLibraryPath [
+                pkgs.stdenv.cc.cc.lib
+                pkgs.zlib
+                pkgs.libGL
+                pkgs.libGLU
+                pkgs.xorg.libX11
+                pkgs.xorg.libXext
+                pkgs.xorg.libXrender
+              ]
+            }:$LD_LIBRARY_PATH"
 
             # Create virtual environment if it doesn't exist
             if [ ! -d .venv ]; then

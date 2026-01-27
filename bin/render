@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run python
 """
-Render AnchorSCAD parts to SCAD and STL files.
+Render AnchorSCAD pattern stamps to SCAD and STL files.
 """
 
 import argparse
@@ -12,7 +12,7 @@ import pkgutil
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-# Setup path to find the 'keystone' package in src/
+# Setup path to find packages in src/
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
@@ -24,19 +24,17 @@ sys.modules["OpenGL.GL"] = MagicMock()
 
 import anchorscad as ad
 import registry
-import lib
-import parts
-import assemblies # New import
+import stamps
 
-def load_all_parts():
-    """Recursively import all modules in parts, lib, and assemblies to trigger decorators and auto-discovery."""
-    
-    # Scan parts (Fabricated Components)
-    path = list(parts.__path__)
-    prefix = parts.__name__ + "."
+def load_all_stamps():
+    """Recursively import all modules in stamps to trigger decorators and auto-discovery."""
+
+    # Scan stamps package
+    path = list(stamps.__path__)
+    prefix = stamps.__name__ + "."
     for _, name, _ in pkgutil.walk_packages(path, prefix):
         mod = importlib.import_module(name)
-        registry.auto_register_module(mod, prefix="parts_")
+        registry.auto_register_module(mod, prefix="stamp_")
 
 
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "build"
@@ -64,66 +62,66 @@ def run_openscad(scad_path: Path, stl_path: Path) -> tuple[Path, bool, str]:
 
 import traceback
 
-# ...
-
-def generate_scad(name: str, part_factory, output_dir: Path) -> tuple[Path, bool, str]:
-    """Generate .scad file from AnchorSCAD part."""
+def generate_scad(name: str, stamp_factory, output_dir: Path) -> tuple[Path, bool, str]:
+    """Generate .scad file from AnchorSCAD stamp."""
     try:
         scad_path = output_dir / f"{name}.scad"
-        
-        # Instantiate the part
-        shape = part_factory()
-        
+
+        # Instantiate the stamp
+        shape = stamp_factory()
+
         # Render to SCAD string
-        # ad.make(shape) was removed/doesn't exist.
         scad_code = str(ad.render(shape).rendered_shape)
-        
+
         with open(scad_path, "w") as f:
             f.write(scad_code)
-            
+
         return (scad_path, True, f"SCAD OK: {name}")
     except Exception as e:
         traceback.print_exc()
         return (Path(f"{name}.scad"), False, f"SCAD ERROR: {name} - {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Render Keystone AnchorSCAD parts.")
-    parser.add_argument("filter", nargs="?", help="Filter parts by name")
+    parser = argparse.ArgumentParser(description="Render pattern stamps to SCAD/STL.")
+    parser.add_argument("filter", nargs="?", help="Filter stamps by name")
     parser.add_argument("--scad-only", action="store_true", help="Skip STL generation")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count(), help="Parallel jobs")
     parser.add_argument("-o", "--output", type=Path, default=DEFAULT_OUTPUT_DIR, help="Output dir")
-    parser.add_argument("--list", action="store_true", help="List parts")
-    
+    parser.add_argument("--list", action="store_true", help="List stamps")
+
     args = parser.parse_args()
-    
+
     # 1. Load Registry
-    load_all_parts()
+    load_all_stamps()
     reg = registry.get_registry()
-    
+
     # 2. Filter
     if args.filter:
-        parts = {k: v for k, v in reg.items() if args.filter in k}
+        stamps_to_build = {k: v for k, v in reg.items() if args.filter in k}
     else:
-        parts = reg
-
-    if not parts:
-        print("No parts found.")
-        sys.exit(1)
+        stamps_to_build = reg
 
     if args.list:
-        print("\n".join(sorted(parts.keys())))
+        if stamps_to_build:
+            print("\n".join(sorted(stamps_to_build.keys())))
+        else:
+            print("No stamps registered yet.")
+        sys.exit(0)
+
+    if not stamps_to_build:
+        print("No stamps found. Add stamp definitions to src/stamps/")
         sys.exit(0)
 
     # 3. Build
     args.output.mkdir(parents=True, exist_ok=True)
-    print(f"Generating {len(parts)} parts to {args.output}...")
-    
+    print(f"Generating {len(stamps_to_build)} stamps to {args.output}...")
+
     scad_files = []
     scad_fail_count = 0
-    for name, factory in parts.items():
+    for name, factory in stamps_to_build.items():
         path, ok, msg = generate_scad(name, factory, args.output)
         print(msg)
-        if ok: 
+        if ok:
             scad_files.append(path)
         else:
             scad_fail_count += 1
@@ -132,16 +130,17 @@ def main():
         sys.exit(1 if scad_fail_count > 0 else 0)
 
     # 4. Render STLs
-    print(f"Rendering STLs ({args.jobs} jobs)...")
-    fail_count = 0
-    with ProcessPoolExecutor(max_workers=args.jobs) as ex:
-        futures = {ex.submit(run_openscad, p, args.output / (p.stem + ".stl")): p for p in scad_files}
-        for f in as_completed(futures):
-            _, ok, msg = f.result()
-            print(msg)
-            if not ok: fail_count += 1
-            
-    sys.exit(1 if fail_count > 0 else 0)
+    if scad_files:
+        print(f"Rendering STLs ({args.jobs} jobs)...")
+        fail_count = 0
+        with ProcessPoolExecutor(max_workers=args.jobs) as ex:
+            futures = {ex.submit(run_openscad, p, args.output / (p.stem + ".stl")): p for p in scad_files}
+            for f in as_completed(futures):
+                _, ok, msg = f.result()
+                print(msg)
+                if not ok: fail_count += 1
+
+        sys.exit(1 if fail_count > 0 else 0)
 
 if __name__ == "__main__":
     main()
