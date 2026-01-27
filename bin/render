@@ -63,15 +63,19 @@ def run_openscad(scad_path: Path, stl_path: Path) -> tuple[Path, bool, str]:
 import traceback
 
 def generate_scad(name: str, stamp_factory, output_dir: Path) -> tuple[Path, bool, str]:
-    """Generate .scad file from AnchorSCAD stamp."""
+    """Generate .scad file from stamp (AnchorSCAD shape or custom generator)."""
     try:
         scad_path = output_dir / f"{name}.scad"
 
         # Instantiate the stamp
         shape = stamp_factory()
 
-        # Render to SCAD string
-        scad_code = str(ad.render(shape).rendered_shape)
+        # Check if it's a custom generator with to_scad() method
+        if hasattr(shape, 'to_scad'):
+            scad_code = shape.to_scad()
+        else:
+            # Use AnchorSCAD's render
+            scad_code = str(ad.render(shape).rendered_shape)
 
         with open(scad_path, "w") as f:
             f.write(scad_code)
