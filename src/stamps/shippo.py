@@ -1,6 +1,5 @@
 """
-Shippo (Seven Treasures) pattern stamp.
-4 overlapping circles in a 2x2 grid whose arcs create a central star shape.
+Shippo pattern stamp - 4 tangent circles filling the stamp.
 """
 from registry import register_stamp
 
@@ -9,47 +8,36 @@ def generate_shippo_scad(width=40.0, depth=40.0, height=20.0,
                           base_height=8.0, pattern_height=3.0,
                           handle_width=25.0, handle_depth=25.0,
                           ring_width=1.5, fn=64) -> str:
-    # 4 circles in 2x2 grid. Radius = spacing so each circle
-    # passes through adjacent centers, creating the central star.
-    spacing = width / 3
-    radius = spacing
-    half_s = spacing / 2
-    handle_height = height - base_height
-    inner_r = radius - ring_width
+    # 4 circles: tangent to neighbors, outer edges at stamp boundary
+    # c = center offset, r = radius
+    # Tangent condition: 2c = 2r → r = c
+    # Boundary condition: c + r = width/2 → 2c = width/2 → c = width/4
+    c = width / 4
+    r = c  # tangent circles
 
-    # 2x2 grid centered on origin
-    centers = [
-        (-half_s, -half_s),
-        ( half_s, -half_s),
-        (-half_s,  half_s),
-        ( half_s,  half_s),
-    ]
+    handle_height = height - base_height
+    inner_r = r - ring_width
+
+    centers = [(-c, -c), (c, -c), (-c, c), (c, c)]
 
     rings = ""
-    for i, (cx, cy) in enumerate(centers):
+    for cx, cy in centers:
         rings += f"""        translate([{cx}, {cy}, {-pattern_height}])
             linear_extrude({pattern_height})
                 difference() {{
-                    circle(r={radius});
+                    circle(r={r});
                     circle(r={inner_r});
                 }}
 """
 
-    return f"""// Shippo Pattern Stamp - {width}x{depth}x{height}mm
+    return f"""// Shippo Pattern Stamp - 4 tangent circles
 $fn = {fn};
 
-// Base
-translate([{-width/2}, {-depth/2}, 0])
-    cube([{width}, {depth}, {base_height}]);
+translate([{-width/2}, {-depth/2}, 0]) cube([{width}, {depth}, {base_height}]);
+translate([{-handle_width/2}, {-handle_depth/2}, {base_height}]) cube([{handle_width}, {handle_depth}, {handle_height}]);
 
-// Handle
-translate([{-handle_width/2}, {-handle_depth/2}, {base_height}])
-    cube([{handle_width}, {handle_depth}, {handle_height}]);
-
-// Pattern - 4 circles in 2x2 grid
 intersection() {{
-    translate([{-width/2}, {-depth/2}, {-pattern_height}])
-        cube([{width}, {depth}, {pattern_height}]);
+    translate([{-width/2}, {-depth/2}, {-pattern_height}]) cube([{width}, {depth}, {pattern_height}]);
     union() {{
 {rings}    }}
 }}
