@@ -18,7 +18,19 @@ def generate_shippo_scad(width=40.0, depth=40.0, height=20.0,
     handle_height = height - base_height
     inner_r = r - ring_width
 
-    centers = [(-c, -c), (c, -c), (-c, c), (c, c)]
+    hw = width / 2
+    hd = depth / 2
+    centers = [
+        # 4 corner circles
+        (-c, -c), (c, -c), (-c, c), (c, c),
+        # Center circle
+        (0, 0),
+        # 4 edge half circles (clipped by intersection)
+        (0, -hd), (0, hd),   # top and bottom edges
+        (-hw, 0), (hw, 0),   # left and right edges
+        # 4 corner quarter circles (clipped by intersection)
+        (-hw, -hd), (hw, -hd), (-hw, hd), (hw, hd),
+    ]
 
     rings = ""
     for cx, cy in centers:

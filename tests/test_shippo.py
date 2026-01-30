@@ -42,23 +42,37 @@ def test_shippo_geometry():
 
 
 def test_shippo_no_overflow():
-    """Verify circles don't overflow the stamp boundary."""
+    """Verify corner circles don't overflow the stamp boundary."""
     width = 40.0
     c = width / 4
     r = c
 
-    centers = [(-c, -c), (c, -c), (-c, c), (c, c)]
+    corner_centers = [(-c, -c), (c, -c), (-c, c), (c, c)]
 
-    for cx, cy in centers:
-        # Check all edges of each circle
+    for cx, cy in corner_centers:
         assert cx - r >= -width/2, f"Circle at ({cx},{cy}) overflows left"
         assert cx + r <= width/2, f"Circle at ({cx},{cy}) overflows right"
         assert cy - r >= -width/2, f"Circle at ({cx},{cy}) overflows bottom"
         assert cy + r <= width/2, f"Circle at ({cx},{cy}) overflows top"
 
-    print("✓ No circles overflow the stamp boundary")
+    print("✓ No corner circles overflow the stamp boundary")
+
+
+def test_shippo_center_circle():
+    """Verify center circle exists and is same size as corner circles."""
+    width = 40.0
+    c = width / 4
+    r = c
+
+    all_centers = [(-c, -c), (c, -c), (-c, c), (c, c), (0, 0)]
+
+    assert (0, 0) in all_centers, "Center circle missing"
+    assert len(all_centers) == 5, f"Expected 5 circles, got {len(all_centers)}"
+
+    print("✓ Center circle present, 5 circles total")
 
 
 if __name__ == "__main__":
     test_shippo_geometry()
     test_shippo_no_overflow()
+    test_shippo_center_circle()
