@@ -46,7 +46,6 @@ def generate_shippo_scad(width=40.0, depth=40.0, height=20.0,
 $fn = {fn};
 
 translate([{-width/2}, {-depth/2}, 0]) cube([{width}, {depth}, {base_height}]);
-translate([{-handle_width/2}, {-handle_depth/2}, {base_height}]) cube([{handle_width}, {handle_depth}, {handle_height}]);
 
 intersection() {{
     translate([{-width/2}, {-depth/2}, {-pattern_height}]) cube([{width}, {depth}, {pattern_height}]);
